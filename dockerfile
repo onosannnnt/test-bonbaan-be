@@ -17,4 +17,4 @@ RUN go build -o main .
 EXPOSE 80
 
 # Run the executable
-CMD ["./main"]
+CMD ["./main"]  
