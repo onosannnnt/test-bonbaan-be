@@ -1,20 +1,35 @@
-# Use an official Golang runtime as a parent image
-FROM golang:1.17-alpine
+# -------- Stage 1: Build the Go app --------
+FROM golang:1.21 AS builder
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . .
+# Copy go.mod and go.sum first (better for caching)
+COPY go.mod go.sum ./
 
-# Download and install any needed dependencies
+# Download dependencies
 RUN go mod download
 
-# Build the Go app
-RUN go build -o main .
+# Copy the source code
+COPY . .
 
-# Make port 80 available to the world outside this container
-EXPOSE 80
+# Build the Go application
+RUN CGO_ENABLED=0 GOOS=linux go build -o main
 
-# Run the executable
-CMD ["./main"]  
+# -------- Stage 2: Create a small runtime image --------
+FROM alpine:latest
+
+# Install required certificates for HTTPS (if needed)
+RUN apk --no-cache add ca-certificates
+
+# Set working directory
+WORKDIR /root/
+
+# Copy the built binary from the builder stage
+COPY --from=builder /app/main .
+
+# Expose the application's port (change if needed)
+EXPOSE 3000
+
+# Run the application
+CMD ["./main"]
